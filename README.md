@@ -25,6 +25,7 @@ Adds additional object properties for operations and settings that go beyond wha
 Below are some screenshots showcasing BlenGo in action:
 
 ![image](https://github.com/user-attachments/assets/59bcd1a1-aa8e-4afd-8222-a05c2d076323)
-![image](https://github.com/user-attachments/assets/215fbf49-bc20-423f-ae79-42330fe2476e)
+Replaced Shaders in Godot:
+![ezgif-160dd60a30610e](https://github.com/user-attachments/assets/3afb91c1-2e4b-45ab-8430-90ed81bf2afa)
 
 Note: the addon is still exprimental, I will add more features as our project goes on.
