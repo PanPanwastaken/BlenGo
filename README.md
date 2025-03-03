@@ -24,6 +24,7 @@ Adds additional object properties for operations and settings that go beyond wha
 
 Below are some screenshots showcasing BlenGo in action:
 
-
+Blender interface
 ![image](https://github.com/user-attachments/assets/59bcd1a1-aa8e-4afd-8222-a05c2d076323)
+Assigning Godot Shaders when imported
 ![image](https://github.com/user-attachments/assets/215fbf49-bc20-423f-ae79-42330fe2476e)
