@@ -14,6 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###############################
+
 bl_info = {
     "name": "BlenGo",
     "author": "PanPan",
@@ -26,9 +27,11 @@ bl_info = {
     "tracker_url": "",
     "category": "Import-Export",
 }
+
 ###############################
 # Imports
 ###############################
+
 import bpy
 from mathutils import Vector
 from bpy.props import (
@@ -36,9 +39,41 @@ from bpy.props import (
 )
 import os, re, shutil
 from bpy_extras.io_utils import ImportHelper
+
+###############################
+# Update Custom property values 
+###############################
+
+#for object properties
+
+def update_obj_prop(self, context):
+    obj = bpy.context.active_object
+    if obj:
+        if self.prop_selection in {"CastShadowOn", "CastShadowOff"}:
+            final_val = self.prop_selection
+        elif self.prop_selection == "Script":
+            prefix = "scriptpath:"
+            final_val = prefix + self.prop_raw
+        else:  # Custom
+            final_val = self.prop_raw
+
+        obj[self.prop_name] = final_val
+        if "_RNA_UI" not in obj:
+            obj["_RNA_UI"] = {}
+        obj["_RNA_UI"][self.prop_name] = {"description": final_val}
+
+
+##############################
+
+#for mesh properties
+def update_mesh_prop_selection(self, context):
+    if self.prop_selection != "Custom":
+        self.prop_description = self.prop_selection
+
 ###############################
 # Update callback for material property description
 ###############################
+
 def update_prop_desc(self, context):
     obj = bpy.context.active_object
     if obj and obj.active_material:
@@ -47,9 +82,11 @@ def update_prop_desc(self, context):
         if "_RNA_UI" not in mat:
             mat["_RNA_UI"] = {}
         mat["_RNA_UI"][self.prop_name] = {"description": self.prop_description}
+
 ###############################
 # Update callback for object property description
 ###############################
+
 def update_obj_prop_desc(self, context):
     obj = bpy.context.active_object
     if obj:
@@ -61,6 +98,7 @@ def update_obj_prop_desc(self, context):
 ###############################
 # Update callback for Mesh property description
 ###############################
+
 def update_godot_mesh_prop_desc(self, context):
     obj = bpy.context.active_object
     if obj and obj.data and hasattr(obj.data, "godot_mesh_properties"):
@@ -73,6 +111,7 @@ def update_godot_mesh_prop_desc(self, context):
 ###############################
 # Property Group: Godot Material Property
 ###############################
+
 class GodotMaterialProperty(bpy.types.PropertyGroup):
     prop_name: StringProperty(
         name="Property Name",
@@ -84,28 +123,82 @@ class GodotMaterialProperty(bpy.types.PropertyGroup):
         description="Custom Godot path for this material property (for Godot import script)",
         update=update_prop_desc
     )
+
 ###############################
 # Property Group: Godot Object Property
 ###############################
+
 class GodotObjectProperty(bpy.types.PropertyGroup):
     prop_name: StringProperty(
         name="Property Name",
-        description="This is automatically set from the active object"
+        description="Automatically set from the active object"
     )
-    prop_description: StringProperty(
+    prop_selection: EnumProperty(
+        name="Option",
+        description="Select a predefined option, Script, or Custom for manual entry",
+        items=[
+            ("CastShadowOn", "CastShadowOn", "Enable cast shadow"),
+            ("CastShadowOff", "CastShadowOff", "Disable cast shadow"),
+            ("Script", "Script", "Assign a script path"),
+            ("Custom", "Custom", "Enter custom value")
+        ],
+        default="Custom",
+        update=update_obj_prop
+    )
+    # This property stores the user-entered text.
+    prop_raw: StringProperty(
         name="Godot path:",
         default="",
-        description="Custom Godot path for this object property (for Godot import script)",
-        update=update_obj_prop_desc
+        description="User entered text",
+        update=update_obj_prop
+    )
+
+###############################
+    def get_prop_description(self):
+        if self.prop_selection == "Script":
+            return "scriptpath:" + self.prop_raw
+        else:
+            return self.prop_raw
+
+    def set_prop_description(self, value):
+        if self.prop_selection == "Script":
+            prefix = "scriptpath:"
+            if value.startswith(prefix):
+                self.prop_raw = value[len(prefix):]
+            else:
+                self.prop_raw = value
+        else:
+            self.prop_raw = value
+
+    prop_description: StringProperty(
+        name="Godot path:",
+        get=get_prop_description,
+        set=set_prop_description,
+        description="Custom Godot path for this object property (for Godot Import script)"
     )
 
 ###############################
 # Property Group: Godot Mesh Property (for meshes)
 ###############################
+
 class GodotMeshProperty(bpy.types.PropertyGroup):
     prop_name: bpy.props.StringProperty(
         name="Property Name",
         description="This is automatically set from the active mesh"
+    )
+    #enum property for mesh properties with a 'Custom' option.
+    prop_selection: EnumProperty(
+        name="Option",
+        description="Select a predefined option or Custom for manual entry",
+        items=[
+            ("LightMapOn", "LightMapOn", "Enable light map"),
+            ("LightMapOff", "LightMapOff", "Disable light map"),
+            ("ShadowMeshesOn", "ShadowMeshesOn", "Enable shadow meshes"),
+            ("ShadowMeshesOff", "ShadowMeshesOff", "Disable shadow meshes"),
+            ("Custom", "Custom", "Enter custom value")
+        ],
+        default="Custom",
+        update=update_mesh_prop_selection
     )
     prop_description: bpy.props.StringProperty(
         name="Godot path:",
@@ -117,6 +210,7 @@ class GodotMeshProperty(bpy.types.PropertyGroup):
 ###############################
 # Feature: Fix Root Bone Rotations
 ###############################
+
 def add_root_bone_and_copy_animation(armature, hip_bone_name, root_bone_name):
     bpy.context.view_layer.objects.active = armature
     bpy.ops.object.mode_set(mode='EDIT')
@@ -224,6 +318,7 @@ class OBJECT_OT_godot_tools(bpy.types.Operator):
 ###############################
 # Feature: Suffix Tools 
 ###############################
+
 class OBJECT_OT_suffix_tools_add(bpy.types.Operator):
     """Add the selected suffix to the object's name"""
     bl_idname = "object.suffix_tools_add"
@@ -307,7 +402,7 @@ class OBJECT_OT_add_collision(bpy.types.Operator):
 # Feature: Asset Folder Path and Export Textures
 ###############################
 class OBJECT_OT_set_asset_folder_path(bpy.types.Operator, ImportHelper):
-    """Set the asset folder path for the Godot project by picking a folder. (thie function will create a folder based on the name of blendfile) """
+    """Set the asset folder path for the Godot project by picking a folder. (thie function will create a folder based on the name of blendfile and subfolders for textures, materials and scene) """
     bl_idname = "object.set_asset_folder_path"
     bl_label = "Set Assets Folder"
     bl_options = {'REGISTER', 'UNDO'}
@@ -322,7 +417,7 @@ class OBJECT_OT_set_asset_folder_path(bpy.types.Operator, ImportHelper):
         pass
 
     def invoke(self, context, event):
-        # We want the file browser to open in "directory" mode.
+        # open file browser to open in "directory" mode.
         self.filemode = 2
         return super().invoke(context, event)
 
@@ -459,6 +554,7 @@ Please do not change the file path in the file browser."""
 ###############################
 # Feature: Custom Material Properties (for active material)
 ###############################
+
 class OBJECT_OT_add_material_property(bpy.types.Operator):
     """Add a new custom material property to the active material.
 The property name will be 'Material: ' + active material name,
@@ -498,6 +594,7 @@ and its 'Godot path:' can be edited directly in the UI."""
 ###############################
 # Operator: Delete Material Property
 ###############################
+
 class OBJECT_OT_delete_material_property(bpy.types.Operator):
     """Delete a custom material property from the active material."""
     bl_idname = "object.delete_material_property"
@@ -528,6 +625,7 @@ class OBJECT_OT_delete_material_property(bpy.types.Operator):
 ###############################
 # Feature: Add Object Properties (for active object)
 ###############################
+
 class OBJECT_OT_add_object_property(bpy.types.Operator):
     """Add a new custom object property to the active object."""
     bl_idname = "object.add_object_property"
@@ -547,11 +645,15 @@ class OBJECT_OT_add_object_property(bpy.types.Operator):
         new_item = obj.godot_object_properties.add()
         new_item.prop_name = prop_name
         new_item.prop_description = ""
+        # Set the default selection to "Custom"
+        new_item.prop_selection = "Custom"
         self.report({'INFO'}, f"Added custom object property '{prop_name}'.")
         return {'FINISHED'}
+
 ###############################
 # Operator: Delete Object Property
 ###############################
+
 class OBJECT_OT_delete_object_property(bpy.types.Operator):
     """Delete a custom object property from the active object."""
     bl_idname = "object.delete_object_property"
@@ -582,6 +684,7 @@ class OBJECT_OT_delete_object_property(bpy.types.Operator):
 ###############################
 # Operator: Add Godot Mesh Property
 ###############################
+
 class OBJECT_OT_add_godot_mesh_property(bpy.types.Operator):
     """Add a new custom mesh property to the active mesh.
 The property name will be 'Mesh: ' + active mesh name,
@@ -604,12 +707,14 @@ and effects all instances unlike Object Properties."""
         new_item = mesh.godot_mesh_properties.add()
         new_item.prop_name = prop_name
         new_item.prop_description = ""
+        new_item.prop_selection = "Custom"
         self.report({'INFO'}, f"Added custom Godot mesh property '{prop_name}'.")
         return {'FINISHED'}
 
 ###############################
 # Operator: Delete Godot Mesh Property
 ###############################
+
 class OBJECT_OT_delete_godot_mesh_property(bpy.types.Operator):
     """Delete a custom Godot mesh property from the active mesh."""
     bl_idname = "object.delete_godot_mesh_property"
@@ -638,9 +743,10 @@ class OBJECT_OT_delete_godot_mesh_property(bpy.types.Operator):
         return {'FINISHED'}
 
 ###############################
-# Feature: Suffix Tools
+# Feature: init Suffix Tools
 ###############################
-def init_properties():
+
+def init_suffix_properties():
     bpy.types.Scene.godot_suffix_tools_collapsible = BoolProperty(
         name="Suffix Tools",
         default=True,
@@ -663,9 +769,13 @@ def init_properties():
         ],
         default="-rigid"
     )
+
+
+    
 ###############################
 # Feature: Collision Tools
 ###############################
+
     bpy.types.Scene.godot_collision_tools_collapsible = BoolProperty(
         name="Add Collision for Selected Objects",
         default=True,
@@ -680,9 +790,11 @@ def init_properties():
         ],
         default="CUBE"
     )
+    
 ###############################
 # Feature: Asset Path
 ###############################
+
     bpy.types.Scene.godot_asset_data_collapsible = BoolProperty(
         name="Asset Folder Path",
         default=True,
@@ -728,6 +840,7 @@ def init_properties():
 ###############################
 # Custom Properies Collection
 ###############################
+
     # Custom Material Properties Collection on Material
     bpy.types.Material.godot_material_properties = CollectionProperty(type=GodotMaterialProperty)
     bpy.types.Material.godot_material_properties_index = IntProperty(name="Index", default=0)
@@ -743,6 +856,7 @@ def init_properties():
 ###############################
 # Operator: Clear property
 ###############################
+
 def clear_properties():
     del bpy.types.Scene.godot_suffix_tools_collapsible
     del bpy.types.Scene.godot_suffix
@@ -762,6 +876,42 @@ def clear_properties():
     del bpy.types.Mesh.godot_mesh_properties
     del bpy.types.Mesh.godot_mesh_properties_index
 
+###############################
+# init menu properties
+###############################
+
+def init_custom_asset_data_properties():
+    bpy.types.Scene.godot_custom_material_properties_collapsible = BoolProperty(
+        name="Custom Material Properties",
+        default=True,
+        description="Show custom material properties"
+    )
+    bpy.types.Scene.godot_custom_object_properties_collapsible = BoolProperty(
+        name="Custom Object Properties",
+        default=True,
+        description="Show custom object properties"
+    )
+    bpy.types.Scene.godot_custom_mesh_properties_collapsible = BoolProperty(
+        name="Custom Mesh Properties",
+        default=True,
+        description="Show custom mesh properties"
+    )
+    bpy.types.Scene.godot_custom_asset_data_collapsible = BoolProperty(
+        name="Custom Asset Data",
+        default=True,
+        description="Show custom asset data (material, object, and mesh properties)"
+    )
+    bpy.types.Scene.godot_fix_root_bone_collapsible = BoolProperty(
+        name="Fix Root Bone Rotations",
+        default=True,
+        description="Show fix root bone rotations options"
+    )
+
+
+
+###############################
+# UI: Menu
+###############################
 
 class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
     """Panel for Godot Tools"""
@@ -775,11 +925,15 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
         layout = self.layout
 
         # ==========================
-        # Fix Root Bone Rotations
+        # Fix Root Bone Rotations Section (Collapsible)
         # ==========================
         box1 = layout.box()
-        box1.label(text="Fix Root Bone Rotations")
-        box1.operator("object.godot_tools", text="Run Root Fix")
+        row_fix = box1.row(align=True)
+        icon_fix = "TRIA_DOWN" if context.scene.godot_fix_root_bone_collapsible else "TRIA_RIGHT"
+        row_fix.prop(context.scene, "godot_fix_root_bone_collapsible", text="Animation tools", icon=icon_fix, emboss=False)
+        if context.scene.godot_fix_root_bone_collapsible:
+            box1.operator("object.godot_tools", text="Run Root Fix")
+
         
         # ==========================
         # Suffix Tools Section
@@ -824,57 +978,71 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
                 asset_box.operator("object.export_gltf_fixed", text="Export Scene")
                 asset_box.operator("object.export_textures", text="Export Textures")
         
-        # ==========================
-        # Custom Asset Data Section
-        # ==========================
+        # --- Custom Asset Data Section ---
         if context.active_object:
             asset_data_box = layout.box()
-            asset_data_box.label(text="Custom Asset Data")
+            # Top-level collapsible header for all custom asset data
             
-            # --- Custom Material Properties ---
-            if context.active_object and context.active_object.select_get():
-                obj = context.active_object
-                if obj.material_slots and obj.active_material:
-                    mat = obj.material_slots[obj.active_material_index].material
-                    sub_box = asset_data_box.box()
-                    sub_box.label(text="Custom Material Properties")
-                    for i, item in enumerate(mat.godot_material_properties):
-                        sub_sub_box = sub_box.box()
-                        row = sub_sub_box.row()
+            row_data = asset_data_box.row(align=True)
+            icon_data = "TRIA_DOWN" if context.scene.godot_custom_asset_data_collapsible else "TRIA_RIGHT"
+            row_data.prop(context.scene, "godot_custom_asset_data_collapsible", text="Custom Asset Data", icon=icon_data, emboss=True)
+            if context.scene.godot_custom_asset_data_collapsible:
+                # Custom Material Properties
+                
+                if context.active_object.select_get():
+                    obj = context.active_object
+                    if obj.material_slots and obj.active_material:
+                        mat = obj.material_slots[obj.active_material_index].material
+                        row_mat = asset_data_box.row(align=True)
+                        icon_mat = "TRIA_DOWN" if context.scene.godot_custom_material_properties_collapsible else "TRIA_RIGHT"
+                        row_mat.prop(context.scene, "godot_custom_material_properties_collapsible", text="Custom Material Properties", icon=icon_mat, emboss=False)
+                        if context.scene.godot_custom_material_properties_collapsible:
+                            sub_box = asset_data_box.box()
+                            for i, item in enumerate(mat.godot_material_properties):
+                                sub_sub_box = sub_box.box()
+                                row = sub_sub_box.row()
+                                row.label(text=item.prop_name)
+                                row.prop(item, "prop_description", text="Godot path")
+                                op = row.operator("object.delete_material_property", text="", icon="PANEL_CLOSE")
+                                op.index = i
+                            sub_box.operator("object.add_material_property", text="Add Material Property")
+                # Custom Object Properties
+                
+                row_obj = asset_data_box.row(align=True)
+                icon_obj = "TRIA_DOWN" if context.scene.godot_custom_object_properties_collapsible else "TRIA_RIGHT"
+                row_obj.prop(context.scene, "godot_custom_object_properties_collapsible", text="Custom Object Properties", icon=icon_obj, emboss=False)
+                if context.scene.godot_custom_object_properties_collapsible:
+                    sub_box2 = asset_data_box.box()
+                    for i, item in enumerate(context.active_object.godot_object_properties):
+                        sub_sub_box = sub_box2.box()
+                        row = sub_sub_box.row(align=True)
                         row.label(text=item.prop_name)
-                        row.prop(item, "prop_description", text="Godot path:")
-                        op = row.operator("object.delete_material_property", text="", icon="PANEL_CLOSE")
-                        op.index = i
-                    sub_box.operator("object.add_material_property", text="Add Material Property")
-            
-            # --- Custom Object Properties ---
-            if context.active_object:
-                sub_box2 = asset_data_box.box()
-                sub_box2.label(text="Custom Object Properties")
-                for i, item in enumerate(context.active_object.godot_object_properties):
-                    sub_sub_box = sub_box2.box()
-                    row = sub_sub_box.row()
-                    row.label(text=item.prop_name)
-                    row.prop(item, "prop_description", text="Godot path:")
-                    op = row.operator("object.delete_object_property", text="", icon="PANEL_CLOSE")
-                    op.index = i
-                sub_box2.operator("object.add_object_property", text="Add Object Property")
-            
-            # --- Custom Godot Mesh Properties ---
-            if context.active_object and context.active_object.type == 'MESH':
-                mesh = context.active_object.data
-                if hasattr(mesh, "godot_mesh_properties"):
-                    mesh_box = layout.box()
-                    mesh_box.label(text="Custom Godot Mesh Properties")
-                    for i, item in enumerate(mesh.godot_mesh_properties):
-                        sub_mesh_box = mesh_box.box()
-                        row = sub_mesh_box.row()
-                        row.label(text=item.prop_name)
-                        row.prop(item, "prop_description", text="Godot path:")
-                        op = row.operator("object.delete_godot_mesh_property", text="", icon="PANEL_CLOSE")
-                        op.index = i
-                    mesh_box.operator("object.add_godot_mesh_property", text="Add Godot Mesh Property")
-
+                        row.prop(item, "prop_selection", text="Option")
+                        if item.prop_selection == "Custom":
+                            row.prop(item, "prop_raw", text="tag")
+                        elif item.prop_selection == "Script":
+                            row.prop(item, "prop_raw", text="Script path")
+                        row.operator("object.delete_object_property", text="", icon="PANEL_CLOSE").index = i
+                    sub_box2.operator("object.add_object_property", text="Add Object Property")
+                # Custom Mesh Properties (if the active object is a mesh)
+                
+                if context.active_object.type == 'MESH':
+                    row_mesh = asset_data_box.row(align=True)
+                    icon_mesh = "TRIA_DOWN" if context.scene.godot_custom_mesh_properties_collapsible else "TRIA_RIGHT"
+                    row_mesh.prop(context.scene, "godot_custom_mesh_properties_collapsible", text="Custom Mesh Properties", icon=icon_mesh, emboss=False)
+                    if context.scene.godot_custom_mesh_properties_collapsible:
+                        mesh = context.active_object.data
+                        if hasattr(mesh, "godot_mesh_properties"):
+                            sub_mesh_box = asset_data_box.box()
+                            for i, item in enumerate(mesh.godot_mesh_properties):
+                                sub_box_mesh = sub_mesh_box.box()
+                                row = sub_box_mesh.row(align=True)
+                                row.label(text=item.prop_name)
+                                row.prop(item, "prop_selection", text="Option")
+                                if item.prop_selection == "Custom":
+                                    row.prop(item, "prop_description", text="tag:")
+                                row.operator("object.delete_godot_mesh_property", text="", icon="PANEL_CLOSE").index = i
+                            sub_mesh_box.operator("object.add_godot_mesh_property", text="Add Godot Mesh Property")
 
 ###############################
 # Registration
@@ -902,7 +1070,8 @@ classes = [
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-    init_properties()
+    init_suffix_properties()
+    init_custom_asset_data_properties()
 
 def unregister():
     for cls in classes:
