@@ -57,8 +57,21 @@ def update_obj_prop_desc(self, context):
         if "_RNA_UI" not in obj:
             obj["_RNA_UI"] = {}
         obj["_RNA_UI"][self.prop_name] = {"description": self.prop_description}
+
 ###############################
-# Property Group: Godot Material Property (for materials)
+# Update callback for Mesh property description
+###############################
+def update_godot_mesh_prop_desc(self, context):
+    obj = bpy.context.active_object
+    if obj and obj.data and hasattr(obj.data, "godot_mesh_properties"):
+        mesh = obj.data
+        mesh[self.prop_name] = self.prop_description
+        if "_RNA_UI" not in mesh:
+            mesh["_RNA_UI"] = {}
+        mesh["_RNA_UI"][self.prop_name] = {"description": self.prop_description}
+
+###############################
+# Property Group: Godot Material Property
 ###############################
 class GodotMaterialProperty(bpy.types.PropertyGroup):
     prop_name: StringProperty(
@@ -72,7 +85,7 @@ class GodotMaterialProperty(bpy.types.PropertyGroup):
         update=update_prop_desc
     )
 ###############################
-# Property Group: Godot Object Property (for objects)
+# Property Group: Godot Object Property
 ###############################
 class GodotObjectProperty(bpy.types.PropertyGroup):
     prop_name: StringProperty(
@@ -85,6 +98,22 @@ class GodotObjectProperty(bpy.types.PropertyGroup):
         description="Custom Godot path for this object property (for Godot import script)",
         update=update_obj_prop_desc
     )
+
+###############################
+# Property Group: Godot Mesh Property (for meshes)
+###############################
+class GodotMeshProperty(bpy.types.PropertyGroup):
+    prop_name: bpy.props.StringProperty(
+        name="Property Name",
+        description="This is automatically set from the active mesh"
+    )
+    prop_description: bpy.props.StringProperty(
+        name="Godot path:",
+        default="",
+        description="Custom Godot path for this mesh property (for Godot import script)",
+        update=update_godot_mesh_prop_desc
+    )
+
 ###############################
 # Feature: Fix Root Bone Rotations
 ###############################
@@ -274,127 +303,6 @@ class OBJECT_OT_add_collision(bpy.types.Operator):
             collision_obj.display_type = 'WIRE'
         self.report({'INFO'}, "Added collision objects for selected objects.")
         return {'FINISHED'}
-
-###############################
-# Feature: Custom Material Properties (for active material)
-###############################
-class OBJECT_OT_add_material_property(bpy.types.Operator):
-    """Add a new custom material property to the active material.
-The property name will be 'Material: ' + active material name,
-and its 'Godot path:' can be edited directly in the UI."""
-    bl_idname = "object.add_material_property"
-    bl_label = "Add Material Property"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    def execute(self, context):
-        obj = context.active_object
-        if not obj:
-            self.report({'WARNING'}, "No active object.")
-            return {'CANCELLED'}
-        if not obj.material_slots:
-            self.report({'WARNING'}, "Active object has no material slots.")
-            return {'CANCELLED'}
-        idx = obj.active_material_index
-        if idx < 0 or idx >= len(obj.material_slots):
-            self.report({'WARNING'}, "Invalid active material slot.")
-            return {'CANCELLED'}
-        slot = obj.material_slots[idx]
-        if not slot or not slot.material:
-            self.report({'WARNING'}, "Active material slot has no material.")
-            return {'CANCELLED'}
-        mat = slot.material
-        prop_name = "Material: " + mat.name
-        mat[prop_name] = ""
-        if "_RNA_UI" not in mat:
-            mat["_RNA_UI"] = {}
-        mat["_RNA_UI"][prop_name] = {"description": ""}
-        new_item = mat.godot_material_properties.add()
-        new_item.prop_name = prop_name
-        new_item.prop_description = ""
-        self.report({'INFO'}, f"Added custom material property '{prop_name}'.")
-        return {'FINISHED'}
-
-###############################
-# Operator: Delete Material Property
-###############################
-class OBJECT_OT_delete_material_property(bpy.types.Operator):
-    """Delete a custom material property from the active material."""
-    bl_idname = "object.delete_material_property"
-    bl_label = "Delete Material Property"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    index: IntProperty()
-
-    def execute(self, context):
-        obj = context.active_object
-        if not obj or not obj.material_slots or not obj.active_material:
-            self.report({'WARNING'}, "No active material found.")
-            return {'CANCELLED'}
-        mat = obj.material_slots[obj.active_material_index].material
-        try:
-            mat.godot_material_properties.remove(self.index)
-            prop = "Material: " + mat.name
-            if prop in mat:
-                del mat[prop]
-            if "_RNA_UI" in mat and prop in mat["_RNA_UI"]:
-                del mat["_RNA_UI"][prop]
-        except Exception as e:
-            self.report({'WARNING'}, f"Could not delete property: {str(e)}")
-            return {'CANCELLED'}
-        self.report({'INFO'}, "Deleted material property.")
-        return {'FINISHED'}
-
-###############################
-# Feature: Custom Object Properties (for active object)
-###############################
-class OBJECT_OT_add_object_property(bpy.types.Operator):
-    """Add a new custom object property to the active object."""
-    bl_idname = "object.add_object_property"
-    bl_label = "Add Object Property"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    def execute(self, context):
-        obj = context.active_object
-        if not obj:
-            self.report({'WARNING'}, "No active object.")
-            return {'CANCELLED'}
-        prop_name = "Object: " + obj.name
-        obj[prop_name] = ""
-        if "_RNA_UI" not in obj:
-            obj["_RNA_UI"] = {}
-        obj["_RNA_UI"][prop_name] = {"description": ""}
-        new_item = obj.godot_object_properties.add()
-        new_item.prop_name = prop_name
-        new_item.prop_description = ""
-        self.report({'INFO'}, f"Added custom object property '{prop_name}'.")
-        return {'FINISHED'}
-
-class OBJECT_OT_delete_object_property(bpy.types.Operator):
-    """Delete a custom object property from the active object."""
-    bl_idname = "object.delete_object_property"
-    bl_label = "Delete Object Property"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    index: IntProperty()
-
-    def execute(self, context):
-        obj = context.active_object
-        if not obj:
-            self.report({'WARNING'}, "No active object.")
-            return {'CANCELLED'}
-        try:
-            obj.godot_object_properties.remove(self.index)
-            prop = "Object: " + obj.name
-            if prop in obj:
-                del obj[prop]
-            if "_RNA_UI" in obj and prop in obj["_RNA_UI"]:
-                del obj["_RNA_UI"][prop]
-        except Exception as e:
-            self.report({'WARNING'}, f"Could not delete property: {str(e)}")
-            return {'CANCELLED'}
-        self.report({'INFO'}, "Deleted object property.")
-        return {'FINISHED'}
-
 ###############################
 # Feature: Asset Folder Path and Export Textures
 ###############################
@@ -549,7 +457,188 @@ Please do not change the file path in the file browser."""
         return {'FINISHED'}
 
 ###############################
-# Panel: Godot Tools UI
+# Feature: Custom Material Properties (for active material)
+###############################
+class OBJECT_OT_add_material_property(bpy.types.Operator):
+    """Add a new custom material property to the active material.
+The property name will be 'Material: ' + active material name,
+and its 'Godot path:' can be edited directly in the UI."""
+    bl_idname = "object.add_material_property"
+    bl_label = "Add Material Property"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj:
+            self.report({'WARNING'}, "No active object.")
+            return {'CANCELLED'}
+        if not obj.material_slots:
+            self.report({'WARNING'}, "Active object has no material slots.")
+            return {'CANCELLED'}
+        idx = obj.active_material_index
+        if idx < 0 or idx >= len(obj.material_slots):
+            self.report({'WARNING'}, "Invalid active material slot.")
+            return {'CANCELLED'}
+        slot = obj.material_slots[idx]
+        if not slot or not slot.material:
+            self.report({'WARNING'}, "Active material slot has no material.")
+            return {'CANCELLED'}
+        mat = slot.material
+        prop_name = "Material: " + mat.name
+        mat[prop_name] = ""
+        if "_RNA_UI" not in mat:
+            mat["_RNA_UI"] = {}
+        mat["_RNA_UI"][prop_name] = {"description": ""}
+        new_item = mat.godot_material_properties.add()
+        new_item.prop_name = prop_name
+        new_item.prop_description = ""
+        self.report({'INFO'}, f"Added custom material property '{prop_name}'.")
+        return {'FINISHED'}
+
+###############################
+# Operator: Delete Material Property
+###############################
+class OBJECT_OT_delete_material_property(bpy.types.Operator):
+    """Delete a custom material property from the active material."""
+    bl_idname = "object.delete_material_property"
+    bl_label = "Delete Material Property"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    index: IntProperty()
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj or not obj.material_slots or not obj.active_material:
+            self.report({'WARNING'}, "No active material found.")
+            return {'CANCELLED'}
+        mat = obj.material_slots[obj.active_material_index].material
+        try:
+            mat.godot_material_properties.remove(self.index)
+            prop = "Material: " + mat.name
+            if prop in mat:
+                del mat[prop]
+            if "_RNA_UI" in mat and prop in mat["_RNA_UI"]:
+                del mat["_RNA_UI"][prop]
+        except Exception as e:
+            self.report({'WARNING'}, f"Could not delete property: {str(e)}")
+            return {'CANCELLED'}
+        self.report({'INFO'}, "Deleted material property.")
+        return {'FINISHED'}
+
+###############################
+# Feature: Add Object Properties (for active object)
+###############################
+class OBJECT_OT_add_object_property(bpy.types.Operator):
+    """Add a new custom object property to the active object."""
+    bl_idname = "object.add_object_property"
+    bl_label = "Add Object Property"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj:
+            self.report({'WARNING'}, "No active object.")
+            return {'CANCELLED'}
+        prop_name = "Object: " + obj.name
+        obj[prop_name] = ""
+        if "_RNA_UI" not in obj:
+            obj["_RNA_UI"] = {}
+        obj["_RNA_UI"][prop_name] = {"description": ""}
+        new_item = obj.godot_object_properties.add()
+        new_item.prop_name = prop_name
+        new_item.prop_description = ""
+        self.report({'INFO'}, f"Added custom object property '{prop_name}'.")
+        return {'FINISHED'}
+###############################
+# Operator: Delete Object Property
+###############################
+class OBJECT_OT_delete_object_property(bpy.types.Operator):
+    """Delete a custom object property from the active object."""
+    bl_idname = "object.delete_object_property"
+    bl_label = "Delete Object Property"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    index: IntProperty()
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj:
+            self.report({'WARNING'}, "No active object.")
+            return {'CANCELLED'}
+        try:
+            obj.godot_object_properties.remove(self.index)
+            prop = "Object: " + obj.name
+            if prop in obj:
+                del obj[prop]
+            if "_RNA_UI" in obj and prop in obj["_RNA_UI"]:
+                del obj["_RNA_UI"][prop]
+        except Exception as e:
+            self.report({'WARNING'}, f"Could not delete property: {str(e)}")
+            return {'CANCELLED'}
+        self.report({'INFO'}, "Deleted object property.")
+        return {'FINISHED'}
+
+
+###############################
+# Operator: Add Godot Mesh Property
+###############################
+class OBJECT_OT_add_godot_mesh_property(bpy.types.Operator):
+    """Add a new custom mesh property to the active mesh.
+The property name will be 'Mesh: ' + active mesh name,
+and effects all instances unlike Object Properties."""
+    bl_idname = "object.add_godot_mesh_property"
+    bl_label = "Add Godot Mesh Property"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj or not obj.data or obj.type != 'MESH':
+            self.report({'WARNING'}, "No active mesh found.")
+            return {'CANCELLED'}
+        mesh = obj.data
+        prop_name = "Mesh: " + mesh.name
+        mesh[prop_name] = ""
+        if "_RNA_UI" not in mesh:
+            mesh["_RNA_UI"] = {}
+        mesh["_RNA_UI"][prop_name] = {"description": ""}
+        new_item = mesh.godot_mesh_properties.add()
+        new_item.prop_name = prop_name
+        new_item.prop_description = ""
+        self.report({'INFO'}, f"Added custom Godot mesh property '{prop_name}'.")
+        return {'FINISHED'}
+
+###############################
+# Operator: Delete Godot Mesh Property
+###############################
+class OBJECT_OT_delete_godot_mesh_property(bpy.types.Operator):
+    """Delete a custom Godot mesh property from the active mesh."""
+    bl_idname = "object.delete_godot_mesh_property"
+    bl_label = "Delete Godot Mesh Property"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    index: bpy.props.IntProperty()
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj or not obj.data or obj.type != 'MESH':
+            self.report({'WARNING'}, "No active mesh found.")
+            return {'CANCELLED'}
+        mesh = obj.data
+        try:
+            mesh.godot_mesh_properties.remove(self.index)
+            prop = "Mesh: " + mesh.name
+            if prop in mesh:
+                del mesh[prop]
+            if "_RNA_UI" in mesh and prop in mesh["_RNA_UI"]:
+                del mesh["_RNA_UI"][prop]
+        except Exception as e:
+            self.report({'WARNING'}, f"Could not delete property: {str(e)}")
+            return {'CANCELLED'}
+        self.report({'INFO'}, "Deleted Godot mesh property.")
+        return {'FINISHED'}
+
+###############################
+# Feature: Suffix Tools
 ###############################
 def init_properties():
     bpy.types.Scene.godot_suffix_tools_collapsible = BoolProperty(
@@ -574,6 +663,9 @@ def init_properties():
         ],
         default="-rigid"
     )
+###############################
+# Feature: Collision Tools
+###############################
     bpy.types.Scene.godot_collision_tools_collapsible = BoolProperty(
         name="Add Collision for Selected Objects",
         default=True,
@@ -588,12 +680,15 @@ def init_properties():
         ],
         default="CUBE"
     )
+###############################
+# Feature: Asset Path
+###############################
     bpy.types.Scene.godot_asset_data_collapsible = BoolProperty(
         name="Asset Folder Path",
         default=True,
         description="Set asset folder path and create asset subfolders for the blend file"
     )
-    # New texture rescaling options
+    # texture rescaling options
     bpy.types.Scene.godot_texture_rescale = BoolProperty(
         name="Rescale Textures",
         default=False,
@@ -629,13 +724,25 @@ def init_properties():
         description="Materials subfolder path",
         default=""
     )
+
+###############################
+# Custom Properies Collection
+###############################
     # Custom Material Properties Collection on Material
     bpy.types.Material.godot_material_properties = CollectionProperty(type=GodotMaterialProperty)
     bpy.types.Material.godot_material_properties_index = IntProperty(name="Index", default=0)
     # Custom Object Properties Collection on Object
     bpy.types.Object.godot_object_properties = CollectionProperty(type=GodotObjectProperty)
     bpy.types.Object.godot_object_properties_index = IntProperty(name="Index", default=0)
+    # Custom Mesh Properties Collection on Object
+    bpy.types.Mesh.godot_mesh_properties = bpy.props.CollectionProperty(type=GodotMeshProperty)
+    bpy.types.Mesh.godot_mesh_properties_index = bpy.props.IntProperty(name="Index", default=0)
 
+
+
+###############################
+# Operator: Clear property
+###############################
 def clear_properties():
     del bpy.types.Scene.godot_suffix_tools_collapsible
     del bpy.types.Scene.godot_suffix
@@ -652,6 +759,9 @@ def clear_properties():
     del bpy.types.Material.godot_material_properties_index
     del bpy.types.Object.godot_object_properties
     del bpy.types.Object.godot_object_properties_index
+    del bpy.types.Mesh.godot_mesh_properties
+    del bpy.types.Mesh.godot_mesh_properties_index
+
 
 class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
     """Panel for Godot Tools"""
@@ -663,13 +773,17 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
     
     def draw(self, context):
         layout = self.layout
-        
-        # Box 1: Fix Root Bone Rotations
+
+        # ==========================
+        # Fix Root Bone Rotations
+        # ==========================
         box1 = layout.box()
         box1.label(text="Fix Root Bone Rotations")
         box1.operator("object.godot_tools", text="Run Root Fix")
         
-        # Box 2: Suffix Tools Section
+        # ==========================
+        # Suffix Tools Section
+        # ==========================
         row = layout.row()
         icon = "TRIA_DOWN" if context.scene.godot_suffix_tools_collapsible else "TRIA_RIGHT"
         row.prop(context.scene, "godot_suffix_tools_collapsible", text="Suffix Tools", icon=icon, emboss=False)
@@ -682,7 +796,9 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
             row2.operator("object.suffix_tools_add", text="Add Suffix")
             row2.operator("object.suffix_tools_remove", text="Remove Suffix")
         
-        # Box 3: Collision Tools Section
+        # ==========================
+        # Collision Tools Section
+        # ==========================
         row3 = layout.row()
         icon3 = "TRIA_DOWN" if context.scene.godot_collision_tools_collapsible else "TRIA_RIGHT"
         row3.prop(context.scene, "godot_collision_tools_collapsible", text="Add Collision for Selected Objects", icon=icon3, emboss=False)
@@ -691,7 +807,9 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
             box3.prop(context.scene, "godot_collision_shape", text="Shape")
             box3.operator("object.add_collision", text="Add Collision Mesh")
         
-        # Box 4: Asset Folder Path
+        # ==========================
+        # Asset Folder Path Section
+        # ==========================
         row_asset = layout.row()
         icon_asset = "TRIA_DOWN" if context.scene.godot_asset_data_collapsible else "TRIA_RIGHT"
         row_asset.prop(context.scene, "godot_asset_data_collapsible", text="Asset Folder Path", icon=icon_asset, emboss=False)
@@ -706,11 +824,14 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
                 asset_box.operator("object.export_gltf_fixed", text="Export Scene")
                 asset_box.operator("object.export_textures", text="Export Textures")
         
-        # Box 5: Custom Asset Data (Custom Material and Object Properties)
+        # ==========================
+        # Custom Asset Data Section
+        # ==========================
         if context.active_object:
             asset_data_box = layout.box()
             asset_data_box.label(text="Custom Asset Data")
-            # Custom Material Properties (for active material)
+            
+            # --- Custom Material Properties ---
             if context.active_object and context.active_object.select_get():
                 obj = context.active_object
                 if obj.material_slots and obj.active_material:
@@ -725,7 +846,8 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
                         op = row.operator("object.delete_material_property", text="", icon="PANEL_CLOSE")
                         op.index = i
                     sub_box.operator("object.add_material_property", text="Add Material Property")
-            # Custom Object Properties (for active object)
+            
+            # --- Custom Object Properties ---
             if context.active_object:
                 sub_box2 = asset_data_box.box()
                 sub_box2.label(text="Custom Object Properties")
@@ -737,11 +859,28 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
                     op = row.operator("object.delete_object_property", text="", icon="PANEL_CLOSE")
                     op.index = i
                 sub_box2.operator("object.add_object_property", text="Add Object Property")
+            
+            # --- Custom Godot Mesh Properties ---
+            if context.active_object and context.active_object.type == 'MESH':
+                mesh = context.active_object.data
+                if hasattr(mesh, "godot_mesh_properties"):
+                    mesh_box = layout.box()
+                    mesh_box.label(text="Custom Godot Mesh Properties")
+                    for i, item in enumerate(mesh.godot_mesh_properties):
+                        sub_mesh_box = mesh_box.box()
+                        row = sub_mesh_box.row()
+                        row.label(text=item.prop_name)
+                        row.prop(item, "prop_description", text="Godot path:")
+                        op = row.operator("object.delete_godot_mesh_property", text="", icon="PANEL_CLOSE")
+                        op.index = i
+                    mesh_box.operator("object.add_godot_mesh_property", text="Add Godot Mesh Property")
+
 
 ###############################
 # Registration
 ###############################
 classes = [
+    VIEW3D_PT_godot_tools_panel,
     OBJECT_OT_godot_tools,
     OBJECT_OT_suffix_tools_add,
     OBJECT_OT_suffix_tools_remove,
@@ -755,7 +894,9 @@ classes = [
     OBJECT_OT_export_gltf_fixed,
     GodotMaterialProperty,
     GodotObjectProperty,
-    VIEW3D_PT_godot_tools_panel,
+    GodotMeshProperty,
+    OBJECT_OT_add_godot_mesh_property,
+    OBJECT_OT_delete_godot_mesh_property,
 ]
 
 def register():
