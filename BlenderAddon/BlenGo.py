@@ -902,7 +902,7 @@ def compute_godot_relative_path(target_path, project_root):
 class OBJECT_OT_export_materials(bpy.types.Operator):
     """Export Godot materials from Blender materials.
 Creates a .tres file for each used material in the Godot materials folder,
-assigning ext_resources for base color, metallic, roughness, and normal textures."""
+assigning ext_resources for base color, metallic, roughness, and normal textures. make sure the project root is assigned for calculating the relative godot paths"""
     bl_idname = "object.export_materials"
     bl_label = "Export Materials"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1073,69 +1073,54 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        # ==========================
-        # Fix Root Bone Rotations Section (Collapsible)
-        # ==========================
-        box1 = layout.box()
-        row_fix = box1.row(align=True)
-        icon_fix = "TRIA_DOWN" if context.scene.godot_fix_root_bone_collapsible else "TRIA_RIGHT"
-        row_fix.prop(context.scene, "godot_fix_root_bone_collapsible", text="Animation tools", icon=icon_fix, emboss=False)
+        # --- Animation Tools Section ---
+        anim_box = layout.box()
+        row_anim = anim_box.row(align=True)
+        anim_icon = "TRIA_DOWN" if context.scene.godot_fix_root_bone_collapsible else "TRIA_RIGHT"
+        row_anim.prop(context.scene, "godot_fix_root_bone_collapsible", text="Animation tools", icon=anim_icon, emboss=True)
         if context.scene.godot_fix_root_bone_collapsible:
-            box1.operator("object.godot_tools", text="Run Root Fix")
+            # You can add more animation operators here if needed
+            anim_box.operator("object.godot_tools", text="Run Root Fix")
 
-        
-        # ==========================
-        # Suffix Tools Section
-        # ==========================
-        row = layout.row()
-        icon = "TRIA_DOWN" if context.scene.godot_suffix_tools_collapsible else "TRIA_RIGHT"
-        row.prop(context.scene, "godot_suffix_tools_collapsible", text="Suffix Tools", icon=icon, emboss=False)
+        # --- Suffix Tools Section ---
+        suffix_box = layout.box()
+        row_suffix = suffix_box.row(align=True)
+        suffix_icon = "TRIA_DOWN" if context.scene.godot_suffix_tools_collapsible else "TRIA_RIGHT"
+        row_suffix.prop(context.scene, "godot_suffix_tools_collapsible", text="Suffix Tools", icon=suffix_icon, emboss=True)
         if context.scene.godot_suffix_tools_collapsible:
-            box2 = layout.box()
-            box2.prop(context.scene, "godot_suffix", text="Select Suffix")
-            description = get_suffix_description(context.scene.godot_suffix)
-            box2.label(text=description)
-            row2 = box2.row(align=True)
-            row2.operator("object.suffix_tools_add", text="Add Suffix")
-            row2.operator("object.suffix_tools_remove", text="Remove Suffix")
-        
-        # ==========================
-        # Collision Tools Section
-        # ==========================
-        row3 = layout.row()
-        icon3 = "TRIA_DOWN" if context.scene.godot_collision_tools_collapsible else "TRIA_RIGHT"
-        row3.prop(context.scene, "godot_collision_tools_collapsible", text="Add Collision for Selected Objects", icon=icon3, emboss=False)
-        if context.scene.godot_collision_tools_collapsible:
-            box3 = layout.box()
-            box3.prop(context.scene, "godot_collision_shape", text="Shape")
-            box3.operator("object.add_collision", text="Add Collision Mesh")
-        
-        # ==========================
-        # Asset Folder Path Section
-        # ==========================
-        row_asset = layout.row()
-        icon_asset = "TRIA_DOWN" if context.scene.godot_asset_data_collapsible else "TRIA_RIGHT"
-        row_asset.prop(context.scene, "godot_asset_data_collapsible", text="Asset Folder Path", icon=icon_asset, emboss=False)
+            suffix_box.prop(context.scene, "godot_suffix", text="Select Suffix")
+            suffix_box.label(text=get_suffix_description(context.scene.godot_suffix))
+            row_suffix_buttons = suffix_box.row(align=True)
+            row_suffix_buttons.operator("object.suffix_tools_add", text="Add Suffix")
+            row_suffix_buttons.operator("object.suffix_tools_remove", text="Remove Suffix")
+
+        # --- Asset Folder Path Section ---
+        asset_box = layout.box()
+        row_asset = asset_box.row(align=True)
+        asset_icon = "TRIA_DOWN" if context.scene.godot_asset_data_collapsible else "TRIA_RIGHT"
+        row_asset.prop(context.scene, "godot_asset_data_collapsible", text="Asset Folder Path", icon=asset_icon, emboss=True)
         if context.scene.godot_asset_data_collapsible:
-            asset_box = layout.box()
-            asset_box.label(text="make sure to set the project root before exporting materials")
+            asset_box.label(text="Set the project root before exporting materials")
             asset_box.prop(context.scene, "godot_project_root", text="Godot Project Root")
-            asset_box.label(text="Project path: " + context.scene.godot_project_root)
+            #asset_box.label(text="Project path: " + context.scene.godot_project_root)
             asset_box.operator("object.set_asset_folder_path", text="Set Asset Folder")
             if context.scene.godot_asset_asset_path:
-                asset_box.label(text="Scene Folder: " + context.scene.godot_asset_scene_path)
-                asset_box.row().prop(context.scene, "godot_texture_rescale", text="Rescale Textures")
-                if context.scene.godot_texture_rescale:
-                    asset_box.row().prop(context.scene, "godot_texture_resolution", text="Texture Resolution")
                 
-                asset_box.operator("object.export_gltf_fixed", text="Export Scene")
-                asset_box.operator("object.export_textures", text="Export Textures")
-                asset_box.operator("object.export_materials", text="Export Materials")
+                asset_box.prop(context.scene, "godot_texture_rescale", text="Rescale Textures")
+                if context.scene.godot_texture_rescale:
+                    asset_box.prop(context.scene, "godot_texture_resolution", text="Texture Resolution")
+                # Place export buttons in one row:
+                export_row = asset_box.row(align=True)
+                export_row.operator("object.export_gltf_fixed", text="Export Scene")
+                export_row.operator("object.export_textures", text="Export Textures")
+                export_row.operator("object.export_materials", text="Export Materials")
+                asset_box.label(text="Scene Folder: " + context.scene.godot_asset_scene_path)
+
 
         # --- Custom Asset Data Section ---
         if context.active_object:
             asset_data_box = layout.box()
-            # Top-level collapsible header for all custom asset data
+            # Top-level 
             
             row_data = asset_data_box.row(align=True)
             icon_data = "TRIA_DOWN" if context.scene.godot_custom_asset_data_collapsible else "TRIA_RIGHT"
@@ -1178,7 +1163,7 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
                             row.prop(item, "prop_raw", text="Script path")
                         row.operator("object.delete_object_property", text="", icon="PANEL_CLOSE").index = i
                     sub_box2.operator("object.add_object_property", text="Add Object Property")
-                # Custom Mesh Properties (if the active object is a mesh)
+                # Custom Mesh Properties (if the active object is mesh)
                 
                 if context.active_object.type == 'MESH':
                     row_mesh = asset_data_box.row(align=True)
