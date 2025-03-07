@@ -39,6 +39,7 @@ from bpy.props import (
 )
 import os, re, shutil
 from bpy_extras.io_utils import ImportHelper
+import random, string
 
 ###############################
 # Update Custom property values 
@@ -851,7 +852,155 @@ def init_suffix_properties():
     bpy.types.Mesh.godot_mesh_properties = bpy.props.CollectionProperty(type=GodotMeshProperty)
     bpy.types.Mesh.godot_mesh_properties_index = bpy.props.IntProperty(name="Index", default=0)
 
+###############################
+# feature: material generator
+###############################
 
+
+def init_godot_root_project():
+    bpy.types.Scene.godot_project_root = StringProperty(
+        name="Godot Project Root",
+        description="The root folder of your Godot project (this folder corresponds to res://)",
+        default="",
+        subtype='DIR_PATH'
+    )
+
+
+
+class OBJECT_OT_set_project_root(bpy.types.Operator, ImportHelper):
+    """Set the Godot project root path (corresponds to res://)"""
+    bl_idname = "object.set_project_root"
+    bl_label = "Set Godot Project Root"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    filename_ext = ""  # No extension
+    use_filter_folder = True
+    filter_glob: StringProperty(default="", options={'HIDDEN'})
+
+    def invoke(self, context, event):
+        self.filemode = 2  # Directory mode
+        return super().invoke(context, event)
+
+    def execute(self, context):
+        # Here, self.filepath contains the selected directory
+        project_root = os.path.abspath(self.filepath)
+        context.scene.godot_project_root = project_root
+        print("Godot project root set to:", project_root)
+        self.report({'INFO'}, f"Godot project root set to: {project_root}")
+        return {'FINISHED'}
+
+def compute_godot_relative_path(target_path, project_root):
+    """
+    Given a target file path and the Godot project root,
+    compute the relative path as Godot expects, i.e. starting with "res://".
+    """
+    target_path = os.path.abspath(target_path)
+    project_root = os.path.abspath(project_root)
+    rel_path = os.path.relpath(target_path, project_root)
+    return "res://" + rel_path.replace("\\", "/")
+###############################################
+class OBJECT_OT_export_materials(bpy.types.Operator):
+    """Export Godot materials from Blender materials.
+Creates a .tres file for each used material in the Godot materials folder,
+assigning ext_resources for base color, metallic, roughness, and normal textures."""
+    bl_idname = "object.export_materials"
+    bl_label = "Export Materials"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        scene = context.scene
+        materials_folder = scene.godot_asset_materials_path
+        textures_folder = scene.godot_asset_textures_path  # Folder where textures are exported
+        project_root = bpy.path.abspath(scene.godot_project_root)
+        
+        # Validate folders
+        if not materials_folder or not os.path.isdir(materials_folder):
+            self.report({'ERROR'}, "Materials folder not set or invalid. Please set asset folder path first.")
+            return {'CANCELLED'}
+        if not textures_folder or not os.path.isdir(textures_folder):
+            self.report({'ERROR'}, "Textures folder not set or invalid. Please export textures first.")
+            return {'CANCELLED'}
+        if not project_root or not os.path.isdir(project_root):
+            self.report({'ERROR'}, "Godot project root not set or invalid.")
+            return {'CANCELLED'}
+
+        # Loop over each material in the blend file
+        for mat in bpy.data.materials:
+            if not mat.users or not mat.use_nodes:
+                continue
+
+            # Initialize texture paths
+            base_color = ""
+            metallic = ""
+            roughness = ""
+            normal = ""
+
+            # Iterate over nodes; match using the image’s filename (in lowercase)
+            for node in mat.node_tree.nodes:
+                if node.type == 'TEX_IMAGE' and node.image:
+                    # Use the image’s filename for matching (lowercase)
+                    filename = os.path.basename(bpy.path.abspath(node.image.filepath))
+                    name_lower = filename.lower()
+                    # Build the expected exported texture path by joining with textures_folder
+                    texture_export_path = os.path.join(textures_folder, filename)
+                    # Compute the Godot relative path using the project root.
+                    godot_path = compute_godot_relative_path(texture_export_path, project_root)
+                    
+                    if "base" in name_lower or "albedo" in name_lower:
+                        base_color = godot_path
+                    elif "metal" in name_lower:
+                        metallic = godot_path
+                    elif "rough" in name_lower:
+                        roughness = godot_path
+                    elif "normal" in name_lower:
+                        normal = godot_path
+
+            # Skip if no textures found 
+            if not (base_color or metallic or roughness or normal):
+                continue
+
+            # Build ext_resource lines and assignments using simple numeric IDs.
+            ext_resources = []
+            assignments = []
+            counter = 1
+            if base_color:
+                ext_resources.append(f'[ext_resource type="Texture2D" path="{base_color}" id="{counter}"]')
+                assignments.append(f'albedo_texture = ExtResource("{counter}")')
+                counter += 1
+            if metallic:
+                ext_resources.append(f'[ext_resource type="Texture2D" path="{metallic}" id="{counter}"]')
+                assignments.append(f'metallic = 1.0')
+                assignments.append(f'metallic_texture = ExtResource("{counter}")')
+                counter += 1
+            if roughness:
+                ext_resources.append(f'[ext_resource type="Texture2D" path="{roughness}" id="{counter}"]')
+                assignments.append(f'roughness_texture = ExtResource("{counter}")')
+                counter += 1
+            if normal:
+                ext_resources.append(f'[ext_resource type="Texture2D" path="{normal}" id="{counter}"]')
+                assignments.append(f'normal_enabled = true')
+                assignments.append(f'normal_texture = ExtResource("{counter}")')
+                counter += 1
+
+            # Generate the material header and resource block.
+            material_header = f'[gd_resource type="StandardMaterial3D" load_steps=5 format=3 uid="uid://{mat.name.lower()}"]'
+            resource_block = "[resource]\n"
+            resource_block += f'resource_name = "{mat.name}"\n'
+            resource_block += "cull_mode = 2\n"
+
+            # Combine all parts.
+            content = "\n".join([material_header] + ext_resources + [resource_block] + assignments)
+
+            # Save the .tres file in the materials folder using the material name.
+            tres_path = os.path.join(materials_folder, f"{mat.name}.tres")
+            try:
+                with open(tres_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+            except Exception as e:
+                self.report({'WARNING'}, f"Could not export material {mat.name}: {e}")
+
+        self.report({'INFO'}, "Exported materials.")
+        return {'FINISHED'}
 
 ###############################
 # Operator: Clear property
@@ -969,15 +1118,20 @@ class VIEW3D_PT_godot_tools_panel(bpy.types.Panel):
         row_asset.prop(context.scene, "godot_asset_data_collapsible", text="Asset Folder Path", icon=icon_asset, emboss=False)
         if context.scene.godot_asset_data_collapsible:
             asset_box = layout.box()
+            asset_box.label(text="make sure to set the project root before exporting materials")
+            asset_box.prop(context.scene, "godot_project_root", text="Godot Project Root")
+            asset_box.label(text="Project path: " + context.scene.godot_project_root)
             asset_box.operator("object.set_asset_folder_path", text="Set Asset Folder")
             if context.scene.godot_asset_asset_path:
                 asset_box.label(text="Scene Folder: " + context.scene.godot_asset_scene_path)
                 asset_box.row().prop(context.scene, "godot_texture_rescale", text="Rescale Textures")
                 if context.scene.godot_texture_rescale:
                     asset_box.row().prop(context.scene, "godot_texture_resolution", text="Texture Resolution")
+                
                 asset_box.operator("object.export_gltf_fixed", text="Export Scene")
                 asset_box.operator("object.export_textures", text="Export Textures")
-        
+                asset_box.operator("object.export_materials", text="Export Materials")
+
         # --- Custom Asset Data Section ---
         if context.active_object:
             asset_data_box = layout.box()
@@ -1065,6 +1219,7 @@ classes = [
     GodotMeshProperty,
     OBJECT_OT_add_godot_mesh_property,
     OBJECT_OT_delete_godot_mesh_property,
+    OBJECT_OT_export_materials,
 ]
 
 def register():
@@ -1072,6 +1227,7 @@ def register():
         bpy.utils.register_class(cls)
     init_suffix_properties()
     init_custom_asset_data_properties()
+    init_godot_root_project()
 
 def unregister():
     for cls in classes:
@@ -1080,3 +1236,5 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+    
+    
