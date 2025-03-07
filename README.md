@@ -2,13 +2,13 @@
 
 
 # BlenGo 
-is our team's solution for bridging the gap between Blender and Godot which was needed for our small team to speed up the workflow. It allows us to design levels predominantly in Blender while addressing common workflow issues—such as root motion rotation and animation glitches. Leveraging the GLB format's efficiency, support for custom properties in metadata and its ability to maintain linked Blender instances, it opens up endless possibilities for efficient Level Design.
+is our team's solution for bridging the gap between Blender and Godot which was needed for our small team to speed up the workflow. It allows us to design levels predominantly in Blender while addressing common workflow issues such as root motion rotation and animation glitches. Leveraging the GLB format's efficiency, support for custom properties in metadata and its ability to maintain linked Blender instances, it opens up endless possibilities for efficient Level Design.
 
 Important Note: the addon is still exprimental, I will add more features as our project goes on. The Godot Plugin is under development and will be adeed in the next few days
 
 
 ### Import to Godot in less than a few minutes with all the needed properties:
-![Screenshot 2025-03-07 005808](https://github.com/user-attachments/assets/94e7bd1c-2a6f-4c90-a5a7-7dd2f4f401f1)
+![image](https://github.com/user-attachments/assets/54555f52-a12a-46bb-ad4b-2330ae4f9649)
 
 ![image](https://github.com/user-attachments/assets/20a07ecc-5928-4032-a037-5a4e23358bff)
 
