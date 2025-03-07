@@ -2,7 +2,7 @@
 
 
 # BlenGo 
-is our team's solution for bridging the gap between Blender and Godot which was needed for our small team to speed up the workflow. It allows us to design levels predominantly in Blender while addressing common workflow issues—such as root motion rotation and animation glitches. Leveraging the GLB format's support for custom properties in metadata and its ability to maintain linked Blender instances, it opens up endless possibilities for efficient Level Design.
+is our team's solution for bridging the gap between Blender and Godot which was needed for our small team to speed up the workflow. It allows us to design levels predominantly in Blender while addressing common workflow issues—such as root motion rotation and animation glitches. Leveraging the GLB format's efficiency, support for custom properties in metadata and its ability to maintain linked Blender instances, it opens up endless possibilities for efficient Level Design.
 
 Important Note: the addon is still exprimental, I will add more features as our project goes on. The Godot Plugin is under development and will be adeed in the next few days
 
@@ -24,7 +24,7 @@ Automatically generates a collision mesh for objects using the -colonly suffix. 
 Creates an asset folder named after your Blender file. This feature organizes your project by automatically setting up dedicated folders for textures, scenes, and materials, and it can directly export all textures into the corresponding texture folder.
 
 ### Scene Export:
-Uses Blender’s GLTF exporter to generate scenes. You can create custom export presets to tailor the process to your specific needs, keep the effciency of glb while easing the connection of the two softwares.
+Uses Blender’s GLTF exporter to generate scenes. You can create custom export presets and make the export process easier.
 
 ### Texture Export:
 Exports textures with built-in rescaling options, ensuring your assets are optimized and correctly sized.
