@@ -31,12 +31,12 @@ Uses Blender’s GLTF exporter to generate scenes. You can create custom export 
 Exports textures with built-in rescaling options, ensuring your assets are optimized and correctly sized.
 
 ### Material Export:
-Directly Generate Godots BaseMaterial3D (.tres) Materials with assigned textures in blender
+Generate Godots BaseMaterial3D (.tres) files with assigned textures directly in blender
 
 ### Custom Material Properties:
 Embeds custom material properties within metadata to assign custom materials directly in Blender.
 
-Custom Object Properties:
+### Custom Object Properties:
 Adds additional object properties for operations and settings that go beyond what Godot's suffix system supports, offering more flexibility in asset handling. (Mesh Properties for all instances and object Properties for single objects)
 
 
