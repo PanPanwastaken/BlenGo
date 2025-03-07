@@ -8,7 +8,7 @@ Important Note: the addon is still exprimental, I will add more features as our 
 
 
 ### Import to Godot in less than a few minutes with all the needed properties:
-![image](https://github.com/user-attachments/assets/af07e59c-40a1-42d8-8752-e4e303f0ed3d)
+![Screenshot 2025-03-07 005808](https://github.com/user-attachments/assets/94e7bd1c-2a6f-4c90-a5a7-7dd2f4f401f1)
 
 ![image](https://github.com/user-attachments/assets/20a07ecc-5928-4032-a037-5a4e23358bff)
 
