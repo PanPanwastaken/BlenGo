@@ -13,9 +13,8 @@ Important Note: the addon is still exprimental, I will add more features as our 
 ![image](https://github.com/user-attachments/assets/20a07ecc-5928-4032-a037-5a4e23358bff)
 
 
-## Update Log
-Key Features
-Godot Suffix Tool:
+## Key features
+### Godot Suffix Tool:
 Provides a comprehensive menu of Godot-specific suffixes used during the import process. Each suffix comes with a brief explanation of its function, ensuring you understand its impact on your workflow.
 
 ### Collision Shapes:
