@@ -1,32 +1,42 @@
-BlenGo is our team's solution for bridging the gap between Blender and Godot. It allows us to design levels predominantly in Blender while addressing common workflow issues—such as root motion rotation and animation glitches. Leveraging the GLTF format's support for custom properties in metadata and its ability to maintain linked Blender instances, it opens up endless possibilities for efficient Level Design.
+
+
+
+# BlenGo 
+is our team's solution for bridging the gap between Blender and Godot which was needed for our small team to speed up the workflow. It allows us to design levels predominantly in Blender while addressing common workflow issues—such as root motion rotation and animation glitches. Leveraging the GLB format's support for custom properties in metadata and its ability to maintain linked Blender instances, it opens up endless possibilities for efficient Level Design.
 
 Important Note: the addon is still exprimental, I will add more features as our project goes on. The Godot Plugin is under development and will be adeed in the next few days
 
+
+### Import to Godot in less than a few minutes with all the needed properties:
+![image](https://github.com/user-attachments/assets/af07e59c-40a1-42d8-8752-e4e303f0ed3d)
+
+![image](https://github.com/user-attachments/assets/20a07ecc-5928-4032-a037-5a4e23358bff)
+
+
+## Update Log
 Key Features
 Godot Suffix Tool:
 Provides a comprehensive menu of Godot-specific suffixes used during the import process. Each suffix comes with a brief explanation of its function, ensuring you understand its impact on your workflow.
 
-Collision Shapes:
+### Collision Shapes:
 Automatically generates a collision mesh for objects using the -colonly suffix. This simplifies the creation and assignment of collision shapes.
 
-Asset Folder Setup:
+### Asset Folder Setup:
 Creates an asset folder named after your Blender file. This feature organizes your project by automatically setting up dedicated folders for textures, scenes, and materials, and it can directly export all textures into the corresponding texture folder.
 
-Scene Export:
-Uses Blender’s GLTF exporter to generate scenes. You can create custom export presets to tailor the process to your specific needs.
+### Scene Export:
+Uses Blender’s GLTF exporter to generate scenes. You can create custom export presets to tailor the process to your specific needs, keep the effciency of glb while easing the connection of the two softwares.
 
-Texture Export:
+### Texture Export:
 Exports textures with built-in rescaling options, ensuring your assets are optimized and correctly sized.
 
-Custom Material Properties:
-Embeds custom material properties within metadata to assign external materials directly in Godot, streamlining the material management process.
+### Material Export:
+Directly Generate Godots BaseMaterial3D (.tres) Materials with assigned textures in blender
+
+### Custom Material Properties:
+Embeds custom material properties within metadata to assign custom materials directly in Blender.
 
 Custom Object Properties:
-Adds additional object properties for operations and settings that go beyond what Godot's suffix system supports, offering more flexibility in asset handling.
+Adds additional object properties for operations and settings that go beyond what Godot's suffix system supports, offering more flexibility in asset handling. (Mesh Properties for all instances and object Properties for single objects)
 
-Below are some screenshots showcasing BlenGo in action:
-
-![image](https://github.com/user-attachments/assets/59bcd1a1-aa8e-4afd-8222-a05c2d076323)
-Replaced Shaders in Godot:
-![ezgif-160dd60a30610e](https://github.com/user-attachments/assets/3afb91c1-2e4b-45ab-8430-90ed81bf2afa)
 
